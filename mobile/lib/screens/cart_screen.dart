@@ -1,10 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart.dart'; // Import cái giỏ hàng
-import '../configs.dart'; // Để lấy địa chỉ IP Server
+import 'checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -56,8 +53,7 @@ class _CartScreenState extends State<CartScreen> {
     setState(() {});
   }
 
-  // --- HÀM XỬ LÝ ĐẶT HÀNG (chỉ đặt các món đã tích) ---
-  Future<void> _placeOrder() async {
+  void _goToCheckout() {
     if (Cart.items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Giỏ hàng đang trống!")),
@@ -74,89 +70,11 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // 2. Lấy thông tin User đang đăng nhập
-    final prefs = await SharedPreferences.getInstance();
-    final userString = prefs.getString('user_data');
-
-    if (userString == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Bạn cần đăng nhập để đặt hàng!")),
-      );
-      return;
-    }
-
-    final user = jsonDecode(userString);
-    final userId = user['id']; // Lấy ID của người dùng
-    final address = user['address']; // Lấy địa chỉ
-
-    try {
-      // 3. Chuẩn bị dữ liệu chỉ gửi các món đã tích chọn
-      final orderData = {
-        'user_id': userId,
-        'total_amount': _getSelectedTotal(),
-        'address': address,
-        'items': selected
-            .map(
-              (item) => {
-                'product_id': item.product.id,
-                'quantity': item.quantity,
-                'price': item.product.price,
-              },
-            )
-            .toList(),
-      };
-
-      // 4. Gửi lên Server
-      final response = await http.post(
-        Uri.parse('${Configs.baseUrl}/orders'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(orderData),
-      );
-
-      // 5. Xử lý kết quả
-      if (response.statusCode == 201) {
-        // Thành công -> Chỉ xóa các món đã đặt (đã tích)
-        setState(() {
-          final indices = <int>[];
-          for (int i = 0; i < Cart.items.length; i++) {
-            if (i < _selectedItems.length && _selectedItems[i]) {
-              indices.add(i);
-            }
-          }
-          for (int i = indices.length - 1; i >= 0; i--) {
-            Cart.removeFromCart(indices[i]);
-            _selectedItems.removeAt(indices[i]);
-          }
-        });
-
-        if (!mounted) return;
-
-        // Hiện hộp thoại thông báo đẹp
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text("Thành công!"),
-            content: const Text("Đơn hàng của bạn đã được gửi đến dược sĩ."),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text("OK"),
-              ),
-            ],
-          ),
-        );
-      } else {
-        throw Exception('Lỗi server: ${response.body}');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Đặt hàng thất bại: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(items: selected),
+      ),
+    );
   }
 
   @override
@@ -320,9 +238,7 @@ class _CartScreenState extends State<CartScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          // --- GỌI HÀM ĐẶT HÀNG Ở ĐÂY ---
-                          onPressed: _placeOrder,
-                          // -------------------------------
+                          onPressed: _goToCheckout,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF009688),
                             shape: RoundedRectangleBorder(

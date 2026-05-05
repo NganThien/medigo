@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../models/product.dart';
+import '../models/cart.dart';
+import 'main_screen.dart';
 import '../widgets/category_list.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -79,6 +81,22 @@ class _HomeScreenState extends State<HomeScreen> {
   String formatCurrency(double price) {
     final format = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
     return format.format(price);
+  }
+
+  void _addToCart(Product product, {int quantity = 1}) {
+    Cart.addToCart(product, quantity);
+  }
+
+  void _goToCart(BuildContext context) {
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    if (ModalRoute.of(context) is PopupRoute<dynamic>) {
+      Navigator.pop(context);
+    }
+    rootNavigator.push(
+      MaterialPageRoute(
+        builder: (_) => const MainScreen(initialIndex: 3),
+      ),
+    );
   }
 
   @override
@@ -232,27 +250,45 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // 3. Nút mua
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(15),
+          // 3. Cụm nút hành động
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.teal),
+                    ),
+                    onPressed: () {
+                      _addToCart(product);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Đã thêm vào giỏ hàng')),
+                      );
+                    },
+                    child: const Text(
+                      'Thêm vào giỏ',
+                      style: TextStyle(color: Colors.teal),
+                    ),
                   ),
                 ),
-              ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã thêm ${product.name} vào giỏ!')),
-                );
-              },
-              child: const Text(
-                'MUA NGAY',
-                style: TextStyle(color: Colors.white),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                    ),
+                    onPressed: () {
+                      _addToCart(product);
+                      _goToCart(context);
+                    },
+                    child: const Text(
+                      'Mua ngay',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

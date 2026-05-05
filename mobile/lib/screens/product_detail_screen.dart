@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/product.dart';
 import '../models/cart.dart';
+import 'checkout_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -18,6 +19,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   // Hàm định dạng tiền (VND)
   String formatCurrency(double price) {
     return NumberFormat.currency(locale: 'vi_VN', symbol: 'đ').format(price);
+  }
+
+  void _addCurrentProductToCart() {
+    Cart.addToCart(widget.product, _quantity);
+  }
+
+  void _buyNow() {
+    final checkoutItems = [
+      CartItem(product: widget.product, quantity: _quantity),
+    ];
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    Navigator.pop(context);
+    rootNavigator.push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(items: checkoutItems),
+      ),
+    );
   }
 
   @override
@@ -136,45 +154,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       _buildQuantityButton(Icons.add, () {
                         setState(() => _quantity++);
                       }),
-
-                      const Spacer(), // Đẩy nút Mua sang phải
-                      // Nút THÊM VÀO GIỎ
-                      ElevatedButton(
-                        onPressed: () {
-                          // 1. Gọi hàm thêm vào giỏ (Code mình vừa viết ở bước 1)
-                          Cart.addToCart(widget.product, _quantity);
-
-                          // 2. Thông báo cho người dùng biết
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Đã thêm $_quantity ${widget.product.name} vào giỏ!',
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.teal),
+                            foregroundColor: Colors.teal,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: () {
+                            _addCurrentProductToCart();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Đã thêm vào giỏ hàng'),
                               ),
-                              backgroundColor: const Color(0xFF009688),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-
-                          // (Tùy chọn) Có thể cho quay về màn hình trước luôn nếu thích
-                          // Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF009688),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 30,
-                            vertical: 15,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
+                            );
+                          },
+                          child: const Text('Thêm vào giỏ'),
                         ),
-                        child: const Text(
-                          "Thêm vào giỏ",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
+                          onPressed: () {
+                            _buyNow();
+                          },
+                          child: const Text('Mua ngay'),
                         ),
                       ),
                     ],

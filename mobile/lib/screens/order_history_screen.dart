@@ -132,11 +132,19 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     }
   }
 
-  static const List<String> _tabStatuses = ['pending', 'shipping', 'completed', 'cancelled'];
+  static const List<String> _tabStatuses = [
+    'all',
+    'pending',
+    'shipping',
+    'completed',
+    'cancelled',
+    'cancelled_only',
+  ];
 
   int _initialTabIndex() {
     final s = widget.initialStatus;
     if (s == null) return 0;
+    if (s == 'cancelled' || s == 'canceled') return 5;
     final i = _tabStatuses.indexOf(s);
     return i >= 0 ? i : 0;
   }
@@ -159,7 +167,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 6,
       initialIndex: _initialTabIndex(),
       child: Scaffold(
         appBar: AppBar(
@@ -172,10 +180,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
             tabs: [
+              Tab(text: 'Tất cả'),
               Tab(text: 'Đang xử lý'),
               Tab(text: 'Đang giao'),
               Tab(text: 'Đã giao'),
               Tab(text: 'Đổi/Trả'),
+              Tab(text: 'Đã hủy'),
             ],
           ),
         ),
@@ -185,7 +195,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 ? _buildErrorWidget()
                 : TabBarView(
                     children: _tabStatuses
-                        .map((status) => _buildOrderListForStatus(status))
+                        .map((status) => _buildOrderListForTab(status))
                         .toList(),
                   ),
       ),
@@ -210,7 +220,25 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 
-  Widget _buildOrderListForStatus(String status) {
+  Widget _buildOrderListForTab(String status) {
+    if (status == 'all') {
+      return RefreshIndicator(
+        onRefresh: _fetchOrderHistory,
+        child: _buildOrderList(_orders),
+      );
+    }
+
+    if (status == 'cancelled_only') {
+      final cancelledOrders = _orders.where((e) {
+        final s = (e as Map<String, dynamic>)['status'] as String?;
+        return s == 'cancelled' || s == 'canceled';
+      }).toList();
+      return RefreshIndicator(
+        onRefresh: _fetchOrderHistory,
+        child: _buildOrderList(cancelledOrders),
+      );
+    }
+
     final filtered = _orders.where((e) {
       final s = (e as Map<String, dynamic>)['status'] as String?;
       return s == status;

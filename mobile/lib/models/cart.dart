@@ -46,4 +46,9 @@ class Cart {
   static int getItemCount() {
     return items.length;
   }
+
+  // Hàm: Xóa toàn bộ giỏ hàng
+  static void clearCart() {
+    items.clear();
+  }
 }
