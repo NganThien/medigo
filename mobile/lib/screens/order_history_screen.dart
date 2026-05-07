@@ -1,12 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../configs.dart';
-import 'order_detail_screen.dart';
+import '../services/order_service.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   /// Tab mở mặc định: pending, shipping, completed, cancelled.
@@ -23,109 +18,56 @@ class OrderHistoryScreen extends StatefulWidget {
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   bool _isLoading = true;
-  List<dynamic> _orders = [];
+  List<Map<String, dynamic>> _orders = [];
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _fetchOrderHistory();
+    _loadOrders();
   }
 
-  Future<void> _fetchOrderHistory() async {
+  Future<void> _loadOrders() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userString = prefs.getString('user_data');
-
-      if (userString == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.';
-        });
-        return;
-      }
-
-      final userData = jsonDecode(userString);
-      final userId = userData['id'];
-
-      if (userId == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Thiếu user_id. Vui lòng đăng nhập lại.';
-        });
-        return;
-      }
-
-      final url = Uri.parse('${Configs.baseUrl}/orders/history');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': userId}),
-      );
-
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final list = data['orders'] as List<dynamic>? ?? [];
-        setState(() {
-          _orders = list;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Lỗi server: ${response.statusCode}';
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Lỗi kết nối: $e';
-      });
-    }
+    final list = OrderService.getAllOrders();
+    setState(() {
+      _orders = list;
+      _isLoading = false;
+    });
   }
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'completed':
+      case 'Đã giao':
         return Colors.green;
-      case 'pending':
+      case 'Đang xử lý':
         return Colors.orange;
-      case 'shipping':
+      case 'Đang giao':
         return Colors.blue;
-      case 'cancelled':
+      case 'Cancelled':
         return Colors.red;
       default:
         return Colors.grey;
     }
   }
 
-  String _formatDate(String? isoDate) {
-    if (isoDate == null || isoDate.isEmpty) return '—';
+  String _formatDate(dynamic value) {
+    if (value == null) return '—';
     try {
-      final dt = DateTime.parse(isoDate);
+      final dt = value is DateTime ? value : DateTime.parse(value.toString());
       return DateFormat('HH:mm dd/MM/yyyy').format(dt);
     } catch (_) {
-      return isoDate;
+      return value.toString();
     }
   }
 
   String _statusLabel(String status) {
     switch (status) {
-      case 'completed':
-        return 'Hoàn thành';
-      case 'pending':
-        return 'Chờ xử lý';
-      case 'shipping':
-        return 'Đang giao';
-      case 'cancelled':
+      case 'Cancelled':
         return 'Đã hủy';
       default:
         return status;
@@ -134,17 +76,20 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
   static const List<String> _tabStatuses = [
     'all',
-    'pending',
-    'shipping',
-    'completed',
-    'cancelled',
+    'Đang xử lý',
+    'Đang giao',
+    'Đã giao',
+    'Đổi/Trả',
     'cancelled_only',
   ];
 
   int _initialTabIndex() {
     final s = widget.initialStatus;
     if (s == null) return 0;
-    if (s == 'cancelled' || s == 'canceled') return 5;
+    if (s == 'cancelled' || s == 'canceled' || s == 'Cancelled') return 5;
+    if (s == 'pending') return 1;
+    if (s == 'shipping') return 2;
+    if (s == 'completed') return 3;
     final i = _tabStatuses.indexOf(s);
     return i >= 0 ? i : 0;
   }
@@ -223,33 +168,29 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   Widget _buildOrderListForTab(String status) {
     if (status == 'all') {
       return RefreshIndicator(
-        onRefresh: _fetchOrderHistory,
+        onRefresh: _loadOrders,
         child: _buildOrderList(_orders),
       );
     }
 
     if (status == 'cancelled_only') {
-      final cancelledOrders = _orders.where((e) {
-        final s = (e as Map<String, dynamic>)['status'] as String?;
-        return s == 'cancelled' || s == 'canceled';
-      }).toList();
+      final cancelledOrders =
+          _orders.where((e) => (e['status'] as String?) == 'Cancelled').toList();
       return RefreshIndicator(
-        onRefresh: _fetchOrderHistory,
+        onRefresh: _loadOrders,
         child: _buildOrderList(cancelledOrders),
       );
     }
 
-    final filtered = _orders.where((e) {
-      final s = (e as Map<String, dynamic>)['status'] as String?;
-      return s == status;
-    }).toList();
+    final filtered =
+        _orders.where((e) => (e['status'] as String?) == status).toList();
     return RefreshIndicator(
-      onRefresh: _fetchOrderHistory,
+      onRefresh: _loadOrders,
       child: _buildOrderList(filtered),
     );
   }
 
-  Widget _buildOrderList(List<dynamic> orders) {
+  Widget _buildOrderList(List<Map<String, dynamic>> orders) {
     if (orders.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -271,11 +212,11 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       padding: const EdgeInsets.all(16),
       itemCount: orders.length,
       itemBuilder: (context, index) {
-        final order = orders[index] as Map<String, dynamic>;
-        final id = order['id'];
-        final totalAmount = (order['total_amount'] as num?) ?? 0;
+        final order = orders[index];
+        final id = order['id']?.toString() ?? '—';
+        final totalAmount = (order['total'] as num?) ?? 0;
         final status = (order['status'] as String?) ?? 'unknown';
-        final createdAt = order['created_at'] as String?;
+        final createdAt = order['date'];
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -283,69 +224,60 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
           elevation: 2,
-          child: InkWell(
-            onTap: () async {
-              final needReload = await Navigator.of(context).push<bool>(
-                MaterialPageRoute(
-                  builder: (context) => OrderDetailScreen(orderId: id as int),
-                ),
-              );
-              if (needReload == true && mounted) _fetchOrderHistory();
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Mã đơn #$id',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _statusColor(status).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          _statusLabel(status),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _statusColor(status),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tổng tiền: ${_formatCurrency(totalAmount)}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (createdAt != null) ...[
-                    const SizedBox(height: 4),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                     Text(
-                      'Ngày tạo: ${_formatDate(createdAt)}',
+                      'Mã đơn #$id',
                       style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _statusColor(status).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _statusLabel(status),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _statusColor(status),
+                        ),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tổng tiền: ${_formatCurrency(totalAmount)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (createdAt != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Ngày tạo: ${_formatDate(createdAt)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         );

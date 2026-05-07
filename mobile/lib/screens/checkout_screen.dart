@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../models/cart.dart';
 import '../services/address_service.dart';
+import '../services/order_service.dart';
 import 'address_list_screen.dart';
 import 'main_screen.dart';
 
@@ -66,6 +67,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> placeOrder() async {
+    final now = DateTime.now();
+    final newOrder = <String, dynamic>{
+      'id': 'DH${now.millisecondsSinceEpoch}',
+      'products': widget.items
+          .map(
+            (e) => <String, dynamic>{
+              'name': e.product.name,
+              'price': e.product.price,
+              'quantity': e.quantity,
+              'imageUrl': e.product.imageUrl,
+            },
+          )
+          .toList(),
+      'total': _totalPayment,
+      'date': now,
+      'status': 'Đang xử lý',
+      'shippingInfo': _currentAddress,
+    };
+
+    OrderService.addOrder(newOrder);
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Đặt hàng thành công!'),
