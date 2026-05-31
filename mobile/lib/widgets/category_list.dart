@@ -82,13 +82,9 @@ class _CategoryListState extends State<CategoryList> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         children: [
-          _buildItem(categoryId: null, name: 'Tất cả', imageUrl: null),
+          _buildItem(categoryId: null, name: 'Tất cả', icon: Icons.apps),
           ..._categories.map(
-            (c) => _buildItem(
-              categoryId: c.id,
-              name: c.name,
-              imageUrl: c.imageUrl.isEmpty ? null : c.imageUrl,
-            ),
+            (c) => _buildItem(categoryId: c.id, name: c.name, icon: c.icon),
           ),
         ],
       ),
@@ -98,7 +94,7 @@ class _CategoryListState extends State<CategoryList> {
   Widget _buildItem({
     required int? categoryId,
     required String name,
-    String? imageUrl,
+    required IconData icon,
   }) {
     final isSelected = widget.selectedCategoryId == categoryId;
     return Padding(
@@ -121,20 +117,11 @@ class _CategoryListState extends State<CategoryList> {
                   width: isSelected ? 2 : 1,
                 ),
               ),
-              child: imageUrl != null && imageUrl.isNotEmpty
-                  ? ClipOval(
-                      child: Image.asset(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        width: 48,
-                        height: 48,
-                      ),
-                    )
-                  : Icon(
-                      Icons.category,
-                      color: isSelected ? Colors.white : Colors.teal,
-                      size: 24,
-                    ),
+              child: Icon(
+                icon,
+                color: isSelected ? Colors.white : Colors.teal,
+                size: 30,
+              ),
             ),
             const SizedBox(height: 6),
             SizedBox(
