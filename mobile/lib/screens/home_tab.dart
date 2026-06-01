@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../models/product.dart';
-import '../widgets/category_list.dart';
 import 'product_detail_screen.dart';
 import 'search_screen.dart';
 import 'dart:convert';
@@ -17,30 +16,15 @@ class HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<HomeTab> {
   late Future<List<Product>> _futureProducts;
-
-  /// Danh mục đang chọn (null = "Tất cả"). Khi đổi sẽ gọi lại API lấy sản phẩm theo category_id.
-  int? _selectedCategoryId;
-
-  // 1. Biến để lưu tên người dùng
   String _fullName = "Khách hàng";
 
   @override
   void initState() {
     super.initState();
-    _futureProducts = ApiService.fetchProducts(categoryId: _selectedCategoryId);
-    _loadUserInfo(); // 2. Gọi hàm lấy tên ngay khi mở màn hình
+    _futureProducts = ApiService.fetchProducts(); // Lấy tất cả sản phẩm
+    _loadUserInfo();
   }
 
-  /// Gọi lại API lấy sản phẩm (theo danh mục đang chọn).
-  void _onCategorySelected(int? categoryId) {
-    if (_selectedCategoryId == categoryId) return;
-    setState(() {
-      _selectedCategoryId = categoryId;
-      _futureProducts = ApiService.fetchProducts(categoryId: categoryId);
-    });
-  }
-
-  // 3. Hàm đọc thông tin từ bộ nhớ máy
   Future<void> _loadUserInfo() async {
     final prefs = await SharedPreferences.getInstance();
     final userString = prefs.getString('user_data');
@@ -48,7 +32,6 @@ class _HomeTabState extends State<HomeTab> {
     if (userString != null) {
       final userData = jsonDecode(userString);
       setState(() {
-        // Cập nhật tên (Nếu null thì lấy mặc định)
         _fullName = userData['full_name'] ?? "Khách hàng";
       });
     }
@@ -74,7 +57,6 @@ class _HomeTabState extends State<HomeTab> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                // Nền Header Cong
                 Container(
                   height: 180,
                   decoration: BoxDecoration(
@@ -106,7 +88,6 @@ class _HomeTabState extends State<HomeTab> {
                               fontSize: 14,
                             ),
                           ),
-                          // 4. HIỂN THỊ TÊN NGƯỜI DÙNG TẠI ĐÂY
                           Text(
                             _fullName,
                             style: const TextStyle(
@@ -131,7 +112,6 @@ class _HomeTabState extends State<HomeTab> {
                     ],
                   ),
                 ),
-                // Thanh tìm kiếm (bấm vào chuyển sang trang Tìm kiếm)
                 Positioned(
                   bottom: -25,
                   left: 20,
@@ -174,6 +154,7 @@ class _HomeTabState extends State<HomeTab> {
             ),
 
             const SizedBox(height: 40),
+
             // --- 2. BANNER SLIDER ---
             SizedBox(
               height: 140,
@@ -187,17 +168,14 @@ class _HomeTabState extends State<HomeTab> {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // --- 3. DANH MỤC TỪ SERVER (GET /api/categories) ---
-            CategoryList(
-              selectedCategoryId: _selectedCategoryId,
-              onCategorySelected: _onCategorySelected,
-            ),
+            // --- 3. MENU TÍNH NĂNG (MỚI THÊM) ---
+            _buildFeatureMenu(),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 10),
 
-            // --- 4. SẢN PHẨM BÁN CHẠY (Grid) ---
+            // --- 4. SẢN PHẨM MỚI ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -226,7 +204,9 @@ class _HomeTabState extends State<HomeTab> {
               future: _futureProducts,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(color: Colors.teal),
+                  );
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Padding(
@@ -262,6 +242,86 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   // --- CÁC WIDGET CON ---
+
+  // 1. Giao diện 6 nút Menu Tiện Ích
+  Widget _buildFeatureMenu() {
+    final features = [
+      {
+        'icon': Icons.medication,
+        'label': 'Cần mua thuốc',
+        'color': Colors.redAccent,
+      },
+      {'icon': Icons.vaccines, 'label': 'Tiêm vắc xin', 'color': Colors.teal},
+      {
+        'icon': Icons.child_care,
+        'label': 'Mẹ và bé',
+        'color': Colors.pinkAccent,
+      },
+      {
+        'icon': Icons.storefront,
+        'label': 'Tìm nhà thuốc',
+        'color': Colors.deepPurpleAccent,
+      },
+      {'icon': Icons.alarm, 'label': 'Nhắc uống thuốc', 'color': Colors.orange},
+      {
+        'icon': Icons.dashboard_customize,
+        'label': 'Sắp xếp tính năng',
+        'color': Colors.blue,
+      },
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount:
+              3, // Sửa thành 3 cột cho cân đối (3 cột x 2 hàng = 6 nút)
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.85, // Tỷ lệ kéo giãn nút cho đẹp
+        ),
+        itemCount: features.length,
+        itemBuilder: (context, index) {
+          final item = features[index];
+          return InkWell(
+            onTap: () {
+              // TODO: Xử lý sự kiện khi bấm vào nút tính năng
+            },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: (item['color'] as Color).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20), // Bo góc mềm mại
+                  ),
+                  child: Icon(
+                    item['icon'] as IconData,
+                    color: item['color'] as Color,
+                    size: 30, // Tăng nhẹ size icon vì đã giảm số cột
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  item['label'] as String,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildBannerItem(Color color, String text) {
     return Container(
