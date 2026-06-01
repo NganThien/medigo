@@ -14,20 +14,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passController = TextEditingController();
   final _nameController = TextEditingController();
-  final _addressController = TextEditingController();
   bool _isLoading = false;
 
   Future<void> _handleRegister() async {
     final phone = _phoneController.text.trim();
     final password = _passController.text.trim();
     final name = _nameController.text.trim();
-    final address = _addressController.text.trim();
 
+    // 1. Kiểm tra không được để trống
     if (phone.isEmpty || password.isEmpty || name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập Họ tên, SĐT và Mật khẩu!')),
       );
       return;
+    }
+
+    // 2. KIỂM TRA ĐỊNH DẠNG SĐT VIỆT NAM (REGEX)
+    // Quy tắc: Bắt đầu bằng 0 hoặc +84, tiếp theo là 3,5,7,8,9 và có đúng 8 số đằng sau.
+    final phoneRegex = RegExp(r'^(0|\+84)[3|5|7|8|9][0-9]{8}$');
+    if (!phoneRegex.hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'SĐT không hợp lệ! Vui lòng nhập đúng 10 số (VD: 098..., 032...)',
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return; // Khóa chặn, không cho chạy tiếp xuống dưới
     }
 
     setState(() => _isLoading = true);
@@ -41,7 +56,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'phone': phone,
           'password': password,
           'full_name': name,
-          'address': address,
         }),
       );
 
@@ -121,19 +135,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: InputDecoration(
                 labelText: "Mật khẩu",
                 prefixIcon: const Icon(Icons.lock),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Ô nhập Địa chỉ
-            TextField(
-              controller: _addressController,
-              decoration: InputDecoration(
-                labelText: "Địa chỉ nhận hàng (Tùy chọn)",
-                prefixIcon: const Icon(Icons.location_on),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

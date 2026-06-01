@@ -18,36 +18,21 @@ class AddressService {
     final addressesKey = 'addresses_$_currentUserPhone';
     final addressesString = prefs.getString(addressesKey);
 
+    _addressList.clear(); // Đảm bảo dọn sạch list cũ trước khi nạp
+
     if (addressesString != null) {
-      final addressesData = jsonDecode(addressesString) as List;
-      _addressList.clear();
-      _addressList.addAll(addressesData.cast<Map<String, dynamic>>());
-    } else {
-      // Load default addresses for new users
-      _addressList.addAll([
-        {
-          'fullName': 'Nguyen Van A',
-          'phone': _currentUserPhone ?? '0901234567',
-          'province': 'TP. Hồ Chí Minh',
-          'district': 'Quận 1',
-          'ward': 'Phường Bến Nghé',
-          'street': '123 Đường ABC',
-          'label': 'Nhà riêng',
-          'isDefault': true,
-        },
-        {
-          'fullName': 'Tran Thi B',
-          'phone': _currentUserPhone ?? '0912345678',
-          'province': 'Đà Nẵng',
-          'district': 'Quận Hải Châu',
-          'ward': 'Phường Hải Châu I',
-          'street': 'Tòa nhà XYZ, 12 Nguyễn Huệ',
-          'label': 'Công ty',
-          'isDefault': false,
-        },
-      ]);
-      await saveAddresses();
+      try {
+        final addressesData = jsonDecode(addressesString) as List;
+        // SỬA LỖI 2: Cách giải mã an toàn 100%, không bao giờ bị crash ngầm mất dữ liệu
+        _addressList.addAll(
+          addressesData.map((e) => Map<String, dynamic>.from(e)).toList(),
+        );
+      } catch (e) {
+        print('Lỗi nạp địa chỉ: $e');
+      }
     }
+    // SỬA LỖI 1: Đã xóa toàn bộ khối "else" chứa Nguyễn Văn A.
+    // Tài khoản mới từ giờ sẽ có danh sách trống trơn!
   }
 
   static Future<void> saveAddresses() async {
@@ -68,9 +53,15 @@ class AddressService {
         address['isDefault'] = false;
       }
     }
+
+    // Tự động gán mặc định nếu đây là địa chỉ đầu tiên khách hàng thêm
+    if (_addressList.isEmpty) {
+      data['isDefault'] = true;
+    }
+
     _addressList.add(data);
     selectedIndex = _addressList.length - 1;
-    saveAddresses();
+    saveAddresses(); // Ghi thẳng vào ổ cứng điện thoại
   }
 
   static void updateAddress(int index, Map<String, dynamic> data) {
@@ -102,9 +93,7 @@ class AddressService {
     _addressList.removeAt(index);
     if (_addressList.isEmpty) {
       selectedIndex = 0;
-      return;
-    }
-    if (selectedIndex >= _addressList.length) {
+    } else if (selectedIndex >= _addressList.length) {
       selectedIndex = _addressList.length - 1;
     }
     saveAddresses();

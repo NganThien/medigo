@@ -22,7 +22,6 @@ def register():
         phone=data['phone'],
         password=hashed_password,
         full_name=data.get('full_name', 'Khách mới'),
-        address=data.get('address', '')
     )
     db.session.add(new_user)
     db.session.commit()

@@ -68,6 +68,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> placeOrder() async {
+    // --- LẮP CHỐT BẢO VỆ Ở ĐÂY ---
+    if (_currentAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng thêm địa chỉ giao hàng trước khi đặt!'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating, // Nổi lên cho đẹp
+        ),
+      );
+      return; // Lập tức "quay xe", từ chối chạy các code bên dưới!
+    }
+    // -----------------------------
+
     // 1. ĐÓNG GÓI DỮ LIỆU ĐÚNG CHUẨN API FLASK YÊU CẦU
     final orderData = <String, dynamic>{
       'total_amount': _totalPayment,
