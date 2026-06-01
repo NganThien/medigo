@@ -1,100 +1,45 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
-import '../configs.dart';
+import '../services/order_service.dart';
 
-class OrderDetailScreen extends StatefulWidget {
-  final int orderId;
+class OrderHistoryScreen extends StatefulWidget {
+  final String? initialStatus;
 
-  const OrderDetailScreen({super.key, required this.orderId});
+  const OrderHistoryScreen({super.key, this.initialStatus});
 
   @override
-  State<OrderDetailScreen> createState() => _OrderDetailScreenState();
+  State<OrderHistoryScreen> createState() => _OrderHistoryScreenState();
 }
 
-class _OrderDetailScreenState extends State<OrderDetailScreen> {
+class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   bool _isLoading = true;
+  List<Map<String, dynamic>> _orders = [];
   String? _errorMessage;
-  Map<String, dynamic>? _order;
 
   @override
   void initState() {
     super.initState();
-    _fetchOrderDetail();
+    _loadOrders();
   }
 
-  Future<void> _cancelOrder() async {
-    final orderId = _order!['id'] as int;
-    try {
-      final url = Uri.parse('${Configs.baseUrl}/orders/$orderId/cancel');
-      final response = await http.put(url);
-
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Đã hủy đơn hàng.')));
-          Navigator.of(context).pop(true);
-        }
-      } else {
-        final data = jsonDecode(response.body) as Map<String, dynamic>?;
-        final msg =
-            data?['message'] as String? ?? 'Lỗi: ${response.statusCode}';
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg), backgroundColor: Colors.red),
-          );
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi kết nối: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  Future<void> _fetchOrderDetail() async {
+  Future<void> _loadOrders() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _order = null;
     });
 
-    try {
-      final url = Uri.parse('${Configs.baseUrl}/orders/${widget.orderId}');
-      final response = await http.get(url);
+    // Gọi API lấy dữ liệu mới nhất từ MySQL thông qua OrderService
+    await OrderService.loadOrders();
+    final list = OrderService.getAllOrders();
 
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        setState(() {
-          _order = data;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = response.statusCode == 404
-              ? 'Không tìm thấy đơn hàng.'
-              : 'Lỗi server: ${response.statusCode}';
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Lỗi kết nối: $e';
-      });
-    }
+    setState(() {
+      _orders = list;
+      _isLoading = false;
+    });
   }
 
+  // SỬA LỖI 3: Đồng bộ trạng thái Tiếng Anh của Flask -> Màu sắc
   Color _statusColor(String status) {
     switch (status) {
       case 'completed':
@@ -110,12 +55,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  // SỬA LỖI 3: Đồng bộ trạng thái Tiếng Anh của Flask -> Chữ Tiếng Việt cho User xem
   String _statusLabel(String status) {
     switch (status) {
       case 'completed':
-        return 'Hoàn thành';
+        return 'Đã giao';
       case 'pending':
-        return 'Chờ xử lý';
+        return 'Đang xử lý';
       case 'shipping':
         return 'Đang giao';
       case 'cancelled':
@@ -125,14 +71,35 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  String _formatDate(String? isoDate) {
-    if (isoDate == null || isoDate.isEmpty) return '—';
+  String _formatDate(dynamic value) {
+    if (value == null) return '—';
     try {
-      final dt = DateTime.parse(isoDate);
+      final dt = value is DateTime ? value : DateTime.parse(value.toString());
       return DateFormat('HH:mm dd/MM/yyyy').format(dt);
     } catch (_) {
-      return isoDate;
+      return value.toString();
     }
+  }
+
+  // SỬA LỖI 3: Dùng đúng từ khóa của Backend để làm bộ lọc Tab
+  static const List<String> _tabStatuses = [
+    'all',
+    'pending', // Thay vì 'Đang xử lý'
+    'shipping', // Thay vì 'Đang giao'
+    'completed', // Thay vì 'Đã giao'
+    'returned', // Đổi/Trả
+    'cancelled', // Thay vì 'cancelled_only'
+  ];
+
+  int _initialTabIndex() {
+    final s = widget.initialStatus;
+    if (s == null) return 0;
+    if (s == 'cancelled' || s == 'canceled' || s == 'Cancelled') return 5;
+    if (s == 'pending') return 1;
+    if (s == 'shipping') return 2;
+    if (s == 'completed') return 3;
+    final i = _tabStatuses.indexOf(s);
+    return i >= 0 ? i : 0;
   }
 
   String _formatCurrency(num? amount) {
@@ -151,80 +118,43 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chi tiết đơn hàng'),
-        backgroundColor: const Color(0xFF009688),
-        foregroundColor: Colors.white,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? _buildError()
-          : _order == null
-          ? const Center(child: Text('Không có dữ liệu'))
-          : RefreshIndicator(
-              onRefresh: _fetchOrderDetail,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildHeaderCard(),
-                    const SizedBox(height: 20),
-                    _buildProductList(),
-                    const SizedBox(height: 20),
-                    _buildTotalCard(),
-                    if ((_order!['status'] as String?) == 'pending') ...[
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        height: 48,
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Xác nhận hủy đơn'),
-                                content: const Text(
-                                  'Bạn có chắc muốn hủy đơn hàng này?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(false),
-                                    child: const Text('Không'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(true),
-                                    child: const Text(
-                                      'Đồng ý',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true && mounted) _cancelOrder();
-                          },
-                          icon: const Icon(Icons.cancel_outlined, size: 22),
-                          label: const Text('Hủy đơn hàng'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+    return DefaultTabController(
+      length: 6,
+      initialIndex: _initialTabIndex(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Lịch sử đơn hàng'),
+          backgroundColor: const Color(0xFF009688),
+          foregroundColor: Colors.white,
+          bottom: const TabBar(
+            isScrollable: true,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'Tất cả'),
+              Tab(text: 'Đang xử lý'),
+              Tab(text: 'Đang giao'),
+              Tab(text: 'Đã giao'),
+              Tab(text: 'Đổi/Trả'),
+              Tab(text: 'Đã hủy'),
+            ],
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+            ? _buildErrorWidget()
+            : TabBarView(
+                children: _tabStatuses
+                    .map((status) => _buildOrderListForTab(status))
+                    .toList(),
               ),
-            ),
+      ),
     );
   }
 
-  Widget _buildError() {
+  Widget _buildErrorWidget() {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
@@ -242,198 +172,116 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildHeaderCard() {
-    final id = _order!['id'];
-    final createdAt = _order!['created_at'] as String?;
-    final status = (_order!['status'] as String?) ?? 'unknown';
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Mã đơn #$id',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _statusColor(status).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _statusLabel(status),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _statusColor(status),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.calendar_today, size: 18, color: Colors.grey[600]),
-                const SizedBox(width: 8),
-                Text(
-                  'Ngày đặt: ${_formatDate(createdAt)}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProductList() {
-    final items = _order!['items'] as List<dynamic>? ?? [];
-    if (items.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: Text(
-              'Đơn hàng không có sản phẩm.',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ),
-        ),
+  Widget _buildOrderListForTab(String status) {
+    if (status == 'all') {
+      return RefreshIndicator(
+        onRefresh: _loadOrders,
+        child: _buildOrderList(_orders),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            'Sản phẩm',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-        ...items.map((e) {
-          final item = e as Map<String, dynamic>;
-          final name = (item['name'] as String?) ?? '—';
-          final imageUrl = item['image_url'] as String?;
-          final price = (item['price_at_purchase'] as num?) ?? 0;
-          final quantity = (item['quantity'] as int?) ?? 0;
-          final lineTotal = price * quantity;
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 10),
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child:
-                        imageUrl != null &&
-                            imageUrl.toString().trim().isNotEmpty
-                        ? Image.asset(imageUrl, fit: BoxFit.cover)
-                        : Icon(
-                            Icons.medical_services,
-                            color: Colors.grey[400],
-                            size: 32,
-                          ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$quantity x ${_formatCurrency(price)}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    _formatCurrency(lineTotal),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Color(0xFF009688),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ],
+    // Lọc theo đúng trạng thái tiếng Anh (pending, completed...)
+    final filtered = _orders
+        .where((e) => (e['status'] as String?) == status)
+        .toList();
+    return RefreshIndicator(
+      onRefresh: _loadOrders,
+      child: _buildOrderList(filtered),
     );
   }
 
-  Widget _buildTotalCard() {
-    final total = (_order!['total_amount'] as num?) ?? 0;
+  Widget _buildOrderList(List<Map<String, dynamic>> orders) {
+    if (orders.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          const Icon(Icons.receipt_long_outlined, color: Colors.grey, size: 60),
+          const SizedBox(height: 16),
+          const Center(
+            child: Text(
+              'Chưa có đơn nào trong mục này.',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ),
+        ],
+      );
+    }
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        final id = order['id']?.toString() ?? '—';
 
-    return Card(
-      elevation: 2,
-      color: const Color(0xFF009688).withOpacity(0.08),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Tổng cộng',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        // SỬA LỖI 1 & 2: Dùng đúng key JSON từ Flask
+        final totalAmount =
+            (order['total_amount'] as num?) ?? 0; // Chỗ này hết 0 VNĐ rồi nhé!
+        final status = (order['status'] as String?) ?? 'unknown';
+        final createdAt = order['created_at']; // Hiển thị ngày giờ chuẩn
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Mã đơn #$id',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _statusColor(status).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _statusLabel(status),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _statusColor(status),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tổng tiền: ${_formatCurrency(totalAmount)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (createdAt != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Ngày tạo: ${_formatDate(createdAt)}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ],
             ),
-            Text(
-              _formatCurrency(total),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF009688),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

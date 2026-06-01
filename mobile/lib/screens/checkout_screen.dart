@@ -68,41 +68,68 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> placeOrder() async {
-    final now = DateTime.now();
-    final newOrder = <String, dynamic>{
-      'id': 'DH${now.millisecondsSinceEpoch}',
-      'products': widget.items
-          .map(
-            (e) => <String, dynamic>{
-              'name': e.product.name,
-              'price': e.product.price,
-              'quantity': e.quantity,
-              'imageUrl': e.product.imageUrl,
-            },
-          )
-          .toList(),
-      'total': _totalPayment,
-      'date': now.toIso8601String(),
-      'status': 'Đang xử lý',
-      'shippingInfo': _currentAddress != null
-          ? Map<String, dynamic>.from(_currentAddress!)
-          : null,
+    // 1. ĐÓNG GÓI DỮ LIỆU ĐÚNG CHUẨN API FLASK YÊU CẦU
+    final orderData = <String, dynamic>{
+      'total_amount': _totalPayment,
+      'address': _formatAddress(
+        _currentAddress,
+      ), // Ép thành chuỗi text thay vì Map
+      'items': widget.items.map((e) {
+        return {
+          // Ép ID sản phẩm sang số nguyên (int) vì bảng OrderDetail trong MySQL yêu cầu số
+          'product_id': int.tryParse(e.product.id.toString()) ?? 0,
+          'quantity': e.quantity,
+          'price': e.product.price,
+        };
+      }).toList(),
     };
 
-    OrderService.addOrder(newOrder);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đặt hàng thành công!'),
-        duration: Duration(milliseconds: 1500),
-      ),
+    // 2. HIỆN VÒNG QUAY LOADING TRONG LÚC ĐỢI MẠNG
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) =>
+          const Center(child: CircularProgressIndicator(color: Colors.teal)),
     );
 
-    Cart.clearCart();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const MainScreen(initialIndex: 0)),
-      (route) => false,
-    );
+    // 3. BẮN DỮ LIỆU LÊN SERVER VÀ CHỜ KẾT QUẢ
+    // Phải có chữ 'await' để đợi Server trả lời xong mới chạy tiếp
+    final success = await OrderService.addOrder(orderData);
+
+    // Tắt vòng quay loading
+    if (mounted) Navigator.of(context).pop();
+
+    // 4. XỬ LÝ KẾT QUẢ
+    if (success) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đặt hàng thành công!'),
+            backgroundColor: Colors.green,
+            duration: Duration(milliseconds: 1500),
+          ),
+        );
+      }
+
+      Cart.clearCart(); // Xóa giỏ hàng
+
+      // Chuyển về trang chủ
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainScreen(initialIndex: 0)),
+          (route) => false,
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đặt hàng thất bại. Vui lòng thử lại!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _openAddressList() async {

@@ -58,9 +58,15 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('user_data', jsonEncode(data['user']));
 
         // 3. Khởi tạo dịch vụ với dữ liệu người dùng
-        final userPhone = data['user']['phone'] as String;
-        await OrderService.init(userPhone);
-        await AddressService.init(userPhone);
+        final int userId = data['user']['id'] as int; // Bắt ID từ Flask trả về
+        final String userPhone = data['user']['phone'] as String;
+
+        await OrderService.init(
+          userId,
+        ); // Giao ID cho OrderService để gọi API MySQL
+        await AddressService.init(
+          userPhone,
+        ); // Tạm thời vẫn giao Phone cho AddressService
 
         if (!mounted) return;
 

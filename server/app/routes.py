@@ -133,19 +133,17 @@ def create_order():
         return jsonify({'message': f'Lỗi server: {str(e)}'}), 500
 
 
-# --- 6. API LỊCH SỬ ĐƠN HÀNG ---
+# --- 6. API LỊCH SỬ ĐƠN HÀNG (Đã nâng cấp chuẩn Shopee) ---
 @main.route('/api/orders/history', methods=['POST'])
 def get_order_history():
     data = request.get_json()
 
-    # Kiểm tra dữ liệu đầu vào
     if not data or not data.get('user_id'):
         return jsonify({'message': 'Thiếu user_id!'}), 400
 
     try:
         user_id = data['user_id']
 
-        # Lấy danh sách đơn hàng của user, mới nhất lên đầu
         orders = (
             Order.query
             .filter_by(user_id=user_id)
@@ -153,14 +151,26 @@ def get_order_history():
             .all()
         )
 
-        # Định dạng dữ liệu trả về
         history = []
         for order in orders:
+            # Lôi danh sách thuốc trong từng đơn hàng ra
+            items_data = []
+            for detail in order.details:
+                product = Product.query.get(detail.product_id)
+                if product:
+                    items_data.append({
+                        'name': product.name,
+                        'image_url': product.image_url,
+                        'quantity': detail.quantity,
+                        'price': float(detail.price_at_purchase) if detail.price_at_purchase is not None else 0
+                    })
+
             history.append({
                 'id': order.id,
                 'total_amount': float(order.total_amount) if order.total_amount is not None else 0,
                 'status': order.status,
                 'created_at': order.created_at.isoformat() if getattr(order, 'created_at', None) else None,
+                'items': items_data # Nhét danh sách thuốc vào đây để Flutter đọc
             })
 
         return jsonify({'orders': history}), 200
