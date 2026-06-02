@@ -1,39 +1,115 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'product.dart';
+import '../configs.dart'; // Đảm bảo đường dẫn này trỏ đúng file có Configs.baseUrl
 
-// 1. Định nghĩa "Một món hàng trong giỏ"
 class CartItem {
-  final Product product; // Thông tin thuốc
-  int quantity; // Số lượng mua
+  final Product product;
+  int quantity;
 
   CartItem({required this.product, this.quantity = 1});
 }
 
-// 2. Định nghĩa "Cái Giỏ Hàng" (Quản lý toàn bộ)
 class Cart {
-  // Biến static: Để giỏ hàng này là DUY NHẤT trong toàn App (Singleton đơn giản)
-  // Dù bạn ở màn hình nào thì cũng truy cập vào đúng cái giỏ này.
   static List<CartItem> items = [];
+  static int? _userId;
 
-  // Hàm: Thêm vào giỏ
-  static void addToCart(Product product, int quantity) {
-    // Kiểm tra xem thuốc này đã có trong giỏ chưa?
-    final index = items.indexWhere((item) => item.product.id == product.id);
-
-    if (index >= 0) {
-      // Nếu có rồi -> Chỉ cần cộng thêm số lượng
-      items[index].quantity += quantity;
-    } else {
-      // Nếu chưa có -> Thêm món mới vào
-      items.add(CartItem(product: product, quantity: quantity));
+  // 1. GỌI HÀM NÀY ĐỂ KÉO GIỎ HÀNG TỪ SERVER VỀ KHI MỞ APP
+  static Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userString = prefs.getString('user_data');
+    if (userString != null) {
+      final userData = jsonDecode(userString);
+      _userId = userData['id'];
+      await _fetchCartFromServer();
     }
   }
 
-  // Hàm: Xóa khỏi giỏ
-  static void removeFromCart(int index) {
-    items.removeAt(index);
+  static Future<void> _fetchCartFromServer() async {
+    if (_userId == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse('${Configs.baseUrl}/cart/$_userId'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List cartData = data['cart'] ?? [];
+
+        items.clear();
+        for (var item in cartData) {
+          if (item['product'] != null) {
+            items.add(
+              CartItem(
+                product: Product.fromJson(item['product']),
+                quantity: item['quantity'],
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Lỗi tải giỏ hàng: $e');
+    }
   }
 
-  // Hàm: Tính tổng tiền
+  // 2. THÊM VÀO GIỎ (Cập nhật RAM tức thì + Ghi ngầm vào DB)
+  static Future<void> addToCart(Product product, int quantity) async {
+    final index = items.indexWhere((item) => item.product.id == product.id);
+    if (index >= 0) {
+      items[index].quantity += quantity;
+    } else {
+      items.add(CartItem(product: product, quantity: quantity));
+    }
+
+    // Bắn lên Server
+    if (_userId != null) {
+      try {
+        await http.post(
+          Uri.parse('${Configs.baseUrl}/cart/add'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'user_id': _userId,
+            'product_id': int.tryParse(product.id.toString()) ?? 0,
+            'quantity': quantity,
+          }),
+        );
+      } catch (e) {
+        print('Lỗi đồng bộ giỏ hàng: $e');
+      }
+    }
+  }
+
+  // 3. XÓA KHỎI GIỎ
+  static Future<void> removeFromCart(int index) async {
+    if (index < 0 || index >= items.length) return;
+
+    final productId = items[index].product.id;
+    items.removeAt(index); // Xóa ở RAM
+
+    if (_userId != null) {
+      try {
+        await http.delete(
+          Uri.parse('${Configs.baseUrl}/cart/remove/$_userId/$productId'),
+        );
+      } catch (e) {
+        print('Lỗi xóa DB: $e');
+      }
+    }
+  }
+
+  // 4. LÀM SẠCH GIỎ (Dùng khi thanh toán xong)
+  static Future<void> clearCart() async {
+    items.clear();
+    if (_userId != null) {
+      try {
+        await http.delete(Uri.parse('${Configs.baseUrl}/cart/clear/$_userId'));
+      } catch (e) {
+        print('Lỗi clear DB: $e');
+      }
+    }
+  }
+
   static double getTotalPrice() {
     double total = 0;
     for (var item in items) {
@@ -42,13 +118,7 @@ class Cart {
     return total;
   }
 
-  // Hàm: Đếm tổng số món hàng (để hiện số nhỏ nhỏ ở icon giỏ hàng nếu muốn)
   static int getItemCount() {
     return items.length;
-  }
-
-  // Hàm: Xóa toàn bộ giỏ hàng
-  static void clearCart() {
-    items.clear();
   }
 }

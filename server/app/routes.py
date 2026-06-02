@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from . import db
-from .models import Product, User, Order, OrderDetail, Category
+from .models import Product, User, Order, OrderDetail, Category, CartItem
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # --- KHỞI TẠO BLUEPRINT ---
@@ -221,3 +221,46 @@ def cancel_order(order_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'Lỗi server: {str(e)}'}), 500
+
+# --- 9. API ĐỒNG BỘ GIỎ HÀNG ---
+@main.route('/api/cart/<int:user_id>', methods=['GET'])
+def get_cart(user_id):
+    cart_items = CartItem.query.filter_by(user_id=user_id).all()
+    # to_dict() của CartItem đã được bạn viết rất chuẩn, kéo luôn thông tin Product đi kèm
+    return jsonify({'cart': [item.to_dict() for item in cart_items]}), 200
+
+@main.route('/api/cart/add', methods=['POST'])
+def add_to_cart():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    product_id = data.get('product_id')
+    quantity = data.get('quantity', 1)
+
+    if not user_id or not product_id:
+        return jsonify({'message': 'Thiếu thông tin!'}), 400
+
+    # Kiểm tra xem sản phẩm đã có trong giỏ chưa
+    existing_item = CartItem.query.filter_by(user_id=user_id, product_id=product_id).first()
+    
+    if existing_item:
+        existing_item.quantity += quantity
+    else:
+        new_item = CartItem(user_id=user_id, product_id=product_id, quantity=quantity)
+        db.session.add(new_item)
+        
+    db.session.commit()
+    return jsonify({'message': 'Đã đồng bộ giỏ hàng!'}), 200
+
+@main.route('/api/cart/remove/<int:user_id>/<int:product_id>', methods=['DELETE'])
+def remove_from_cart(user_id, product_id):
+    item = CartItem.query.filter_by(user_id=user_id, product_id=product_id).first()
+    if item:
+        db.session.delete(item)
+        db.session.commit()
+    return jsonify({'message': 'Đã xóa khỏi DB!'}), 200
+
+@main.route('/api/cart/clear/<int:user_id>', methods=['DELETE'])
+def clear_cart(user_id):
+    CartItem.query.filter_by(user_id=user_id).delete()
+    db.session.commit()
+    return jsonify({'message': 'Đã làm sạch giỏ!'}), 200

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:medigo/models/cart.dart';
 import '../services/api_service.dart';
 import '../models/product.dart';
 import 'product_detail_screen.dart';
@@ -23,6 +24,7 @@ class _HomeTabState extends State<HomeTab> {
     super.initState();
     _futureProducts = ApiService.fetchProducts(); // Lấy tất cả sản phẩm
     _loadUserInfo();
+    Cart.init();
   }
 
   Future<void> _loadUserInfo() async {

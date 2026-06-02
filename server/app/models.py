@@ -69,3 +69,24 @@ class OrderDetail(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, default=1)
     price_at_purchase = db.Column(db.Numeric(10, 2), nullable=False)
+
+# 6. Bảng GIỎ HÀNG (Lưu lại sản phẩm chưa thanh toán)
+class CartItem(db.Model):
+    __tablename__ = 'cart_items'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Lấy thông tin sản phẩm đi kèm luôn để Flutter dễ hiển thị (tên thuốc, giá, ảnh...)
+    product = db.relationship('Product', backref='in_carts')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'product_id': self.product_id,
+            'quantity': self.quantity,
+            'product': self.product.to_dict() if self.product else None
+        }
