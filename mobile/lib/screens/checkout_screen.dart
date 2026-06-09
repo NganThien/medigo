@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:medigo/screens/notification_manager.dart';
 
 import '../models/cart.dart';
 import '../services/address_service.dart';
@@ -115,6 +116,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     // 4. XỬ LÝ KẾT QUẢ
     if (success) {
+      // 🟢 CHÈN LỆNH BẮN THÔNG BÁO VÀO ĐÂY
+      NotificationManager.addNew(
+        'Đặt hàng thành công!',
+        'Đơn hàng của bạn đã được hệ thống ghi nhận và đang chờ nhà thuốc xử lý. Cảm ơn bạn!',
+        Icons.check_circle_outline,
+        const Color(0xFF009688),
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

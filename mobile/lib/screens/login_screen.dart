@@ -56,28 +56,27 @@ class _LoginScreenState extends State<LoginScreen> {
         // 2. Đăng nhập thành công -> Lưu thông tin vào máy
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_data', jsonEncode(data['user']));
+        
+        // 🟢 BẢO MẬT: Lưu chìa khóa Token vào két sắt điện thoại
+        if (data['access_token'] != null) {
+          await prefs.setString('jwt_token', data['access_token']);
+        }
 
         // 3. Khởi tạo dịch vụ với dữ liệu người dùng
-        final int userId = data['user']['id'] as int; // Bắt ID từ Flask trả về
+        final int userId = data['user']['id'] as int; 
         final String userPhone = data['user']['phone'] as String;
 
-        await OrderService.init(
-          userId,
-        ); // Giao ID cho OrderService để gọi API MySQL
-        await AddressService.init(
-          userPhone,
-        ); // Tạm thời vẫn giao Phone cho AddressService
+        await OrderService.init(userId); 
+        await AddressService.init(userPhone); 
 
         if (!mounted) return;
 
         // 4. Chuyển sang màn hình chính
-        // SỬA LẠI 2: Chuyển đến MainScreen (có thanh Tab) chứ không phải HomeTab
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       } else {
-        // Lỗi từ server (sai pass, không tìm thấy user...)
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -116,7 +115,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Ô nhập số điện thoại — nhấn Tiếp chuyển xuống ô mật khẩu
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
@@ -133,7 +131,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Ô nhập mật khẩu — nhấn Enter/Done trên bàn phím = đăng nhập
               TextField(
                 focusNode: _passFocusNode,
                 controller: _passController,
@@ -152,7 +149,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Nút Đăng nhập
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -174,7 +170,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
               const SizedBox(height: 20),
-              // Nút chuyển sang Đăng ký
               Center(
                 child: TextButton(
                   onPressed: () {

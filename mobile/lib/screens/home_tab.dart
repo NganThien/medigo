@@ -8,6 +8,8 @@ import 'search_screen.dart';
 import 'cart_screen.dart'; // Thêm trang Giỏ hàng
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_screen.dart';
+import 'notification_manager.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -127,15 +129,50 @@ class _HomeTabState extends State<HomeTab> {
                               ),
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.notifications_outlined,
-                              color: Colors.white,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationScreen(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              // 👉 BỘ LẮNG NGHE TRẠNG THÁI CHẤM ĐỎ
+                              child: ValueListenableBuilder<bool>(
+                                valueListenable: NotificationManager.hasUnread,
+                                builder: (context, hasUnread, child) {
+                                  return Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      const Icon(
+                                        Icons.notifications_outlined,
+                                        color: Colors.white,
+                                      ),
+                                      // Chỉ vẽ chấm đỏ nếu biến hasUnread là TRUE
+                                      if (hasUnread)
+                                        Positioned(
+                                          top: 0,
+                                          right: 2,
+                                          child: Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: const BoxDecoration(
+                                              color: Colors.redAccent,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ],

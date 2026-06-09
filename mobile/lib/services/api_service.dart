@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
 import '../models/category.dart';
 import '../configs.dart';
@@ -49,4 +50,26 @@ class ApiService {
       throw Exception('Lỗi kết nối: $e');
     }
   }
+
+  static Future<Map<String, String>> _getAuthHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  /// xử lý lỗi khi token hết hạn
+  static Future<http.Response> getAuthorized(String url) async {
+    final headers = await _getAuthHeaders(); // Hàm lấy token mà chúng ta đã làm
+    final response = await http.get(Uri.parse(url), headers: headers);
+    
+    if (response.statusCode == 401) {
+      // 🟢 TỰ ĐỘNG ĐĂNG XUẤT NẾU TOKEN HẾT HẠN
+      // _handleUnauthorized(); 
+    }
+    return response;
+  }
 }
+

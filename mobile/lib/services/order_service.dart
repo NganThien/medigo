@@ -1,35 +1,43 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../configs.dart';
 
 class OrderService {
   static final List<Map<String, dynamic>> _orders = [];
-
-  // 1. ĐỔI TỪ PHONE SANG ID ĐỂ KHỚP VỚI FLASK
   static int? _currentUserId;
 
-  // Thay bằng IP của Flask. Nếu dùng máy ảo Android thì để 10.0.2.2, dùng máy thật thì điền IP WiFi (vd: 192.168.1.x)
-  static const String baseUrl = 'http://127.0.0.1:5000/api';
+  static String get baseUrl => Configs.baseUrl;
+
+  // 🟢 HÀM BẢO MẬT: Lấy Token từ máy và kẹp vào Header
+  static Future<Map<String, String>> _getAuthHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
 
   static Future<void> init(int userId) async {
     _currentUserId = userId;
-    await loadOrders(); // Tự động kéo dữ liệu từ server khi đăng nhập
+    await loadOrders(); 
   }
 
-  // --- API 6: LẤY LỊCH SỬ ĐƠN HÀNG TỪ SERVER ---
   static Future<void> loadOrders() async {
     if (_currentUserId == null) return;
 
     try {
-      // Gọi đúng method POST theo yêu cầu của Flask
+      final headers = await _getAuthHeaders(); // 🟢 Dùng Header bảo mật
       final response = await http.post(
         Uri.parse('$baseUrl/orders/history'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode({'user_id': _currentUserId}),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final List ordersData = data['orders']; // Bắt đúng mảng 'orders'
+        final List ordersData = data['orders']; 
 
         _orders.clear();
         _orders.addAll(ordersData.cast<Map<String, dynamic>>());
@@ -42,23 +50,21 @@ class OrderService {
     }
   }
 
-  // --- API 5: TẠO ĐƠN HÀNG MỚI LÊN SERVER ---
   static Future<bool> addOrder(Map<String, dynamic> orderData) async {
     if (_currentUserId == null) return false;
 
     try {
-      // Bơm user_id vào cục data trước khi gửi đi
-      orderData['user_id'] = _currentUserId;
+      final headers = await _getAuthHeaders(); // 🟢 Dùng Header bảo mật
 
       final response = await http.post(
         Uri.parse('$baseUrl/orders'),
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: jsonEncode(orderData),
       );
 
       if (response.statusCode == 201) {
         print('✅ Đặt hàng lên Database thành công!');
-        await loadOrders(); // Đặt xong lập tức gọi server lấy danh sách mới nhất về
+        await loadOrders(); 
         return true;
       } else {
         print('❌ Lỗi tạo đơn: ${response.body}');
@@ -74,8 +80,12 @@ class OrderService {
     return List<Map<String, dynamic>>.from(_orders);
   }
 
-  static void clearData() {
+  static void clearData() async {
     _orders.clear();
     _currentUserId = null;
+    
+    // Xóa token khi đăng xuất
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
   }
 }

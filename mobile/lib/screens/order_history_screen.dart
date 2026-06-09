@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/order_service.dart';
+import 'order_detail_screen.dart';
+import '../models/cart.dart';
+import '../models/product.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   final String? initialStatus;
@@ -422,7 +425,12 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       children: [
                         OutlinedButton(
                           onPressed: () {
-                            // TODO: Chuyển sang màn hình Chi tiết đơn hàng
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => OrderDetailScreen(order: order), // Chuyền data đơn hàng sang
+                              ),
+                            );
                           },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.grey),
@@ -450,7 +458,24 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () {
-                              // TODO: Thêm logic nhét lại các món này vào Giỏ hàng
+                              // 1. Quét qua toàn bộ sản phẩm trong đơn cũ
+                              for (var item in items) {
+                                // 2. Ép kiểu dữ liệu JSON thành Object Product
+                                final product = Product.fromJson(item);
+                                final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+                                
+                                // 3. Ném vào Giỏ hàng
+                                Cart.addToCart(product, qty);
+                              }
+
+                              // 4. Hiển thị thông báo màu xanh xịn xò
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Đã thêm các sản phẩm vào giỏ hàng! 🛒'),
+                                  backgroundColor: Colors.teal,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.teal,

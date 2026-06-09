@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_migrate import Migrate
 import os
+from flask_jwt_extended import JWTManager
 
 # Khởi tạo DB nhưng chưa kết nối
 db = SQLAlchemy()
@@ -23,6 +24,10 @@ def create_app():
     
     app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{db_user}:{db_pass}@{db_host}/{db_name}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    #BẬT TÍNH NĂNG BẢO MẬT
+    app.config['JWT_SECRET_KEY'] = 'medigo_super_secret_key_bachkhoa_2026' # Chìa khóa bí mật để đóng mộc
+    jwt = JWTManager(app)
 
     # Kết nối DB với App
     db.init_app(app)
