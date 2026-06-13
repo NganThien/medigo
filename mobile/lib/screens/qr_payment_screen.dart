@@ -102,7 +102,7 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
 
     // Link tạo QR tự động (VietQR)
     final int intAmount = widget.amount.toInt();
-    final String qrUrl = 'https://img.vietqr.io/image/970422-0123456789-compact2.png?amount=$intAmount&addInfo=THANHTOAN MEDIGO ${widget.orderId}&accountName=NHA THUOC MEDIGO';
+    final String qrUrl = 'https://img.vietqr.io/image/vcb-1017127995-compact2.png?amount=$intAmount&addInfo=THANHTOAN MEDIGO ${widget.orderId}&accountName=NHA THUOC MEDIGO';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6), // Màu nền xám nhạt như Long Châu

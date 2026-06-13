@@ -4,6 +4,7 @@ import 'home_tab.dart';
 import 'profile_screen.dart';
 import 'category_screen.dart';
 import 'message_screen.dart';
+import 'chat_screen.dart';
 
 class MainScreen extends StatefulWidget {
   final int initialIndex;
@@ -103,7 +104,7 @@ class _MainScreenState extends State<MainScreen> {
 
       // --- NÚT TRUNG TÂM (FAB) ---
       floatingActionButton: GestureDetector(
-        onTap: () => setState(() => _currentIndex = 2),
+        onTap: () => showConsultationBottomSheet(context),
         child: Container(
           width: 52, // Nút bo nhỏ lại cho thanh thoát
           height: 52,
@@ -236,7 +237,7 @@ class _MainScreenState extends State<MainScreen> {
                 left: 0,
                 right: 0,
                 child: GestureDetector(
-                  onTap: () => setState(() => _currentIndex = 2),
+                  onTap: () => showConsultationBottomSheet(context),
                   child: Text(
                     'Tư vấn',
                     textAlign: TextAlign.center,

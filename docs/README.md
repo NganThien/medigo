@@ -82,21 +82,21 @@ cd server
 ```
 ---
 
-# 1. Tạo Database trên MySQL (Mặc định: root / 123456)
+## 1. Tạo Database trên MySQL (Mặc định: root / 123456)
 ```text
 # CREATE DATABASE pharmacy_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
-# 2. Khởi tạo môi trường ảo
+## 2. Khởi tạo môi trường ảo
 ```text
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
-# 3. Cài đặt thư viện & Tạo bảng
+## 3. Cài đặt thư viện & Tạo bảng
 ```text
 pip install -r requirements.txt
 flask db upgrade
 ```
-# 4. Nạp dữ liệu mẫu & Chạy Server
+## 4. Nạp dữ liệu mẫu & Chạy Server
 ```text
 python seed_data.py
 python run.py
@@ -119,7 +119,7 @@ Web/Chrome: http://127.0.0.1:5000/api
 Thiết bị thật (Wi-Fi/LAN): http://<IPv4_Của_Máy_Tính>:5000/api
 
 
-# Chạy ứng dụng
+## Chạy ứng dụng
 ```text
 flutter run
 ```
