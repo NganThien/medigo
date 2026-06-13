@@ -58,7 +58,9 @@ Dự án áp dụng kiến trúc phân tách rõ ràng, đảm bảo tính mở 
 └────────────────────┘   JSON   └──────────────────────┘          └─────────────┘
   - State: Provider              - Auth: JWT Token                 - ORM: SQLAlchemy
   - Network: HTTP                - CORS Enabled                    - Schema: 6 Tables
+```
 
+---
 
 🚀 Hướng dẫn Cài đặt & Khởi chạy (Local)
 Yêu cầu môi trường:
@@ -68,39 +70,43 @@ Bước 1: Chạy Backend (Flask + MySQL)
 Bạn có thể chạy bằng Docker hoặc chạy thủ công bằng PowerShell.
 
 Cách 1: Chạy bằng Docker (Khuyên dùng)
+```text
 cd server
 docker-compose up -d --build
 docker-compose exec web python seed_data.py # Nạp dữ liệu mẫu
+```
 
-3
 Cách 2: Chạy thủ công trên Windows PowerShell
-
+```text
 cd server
+```
 
 # 1. Tạo Database trên MySQL (Mặc định: root / 123456)
 # CREATE DATABASE pharmacy_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 # 2. Khởi tạo môi trường ảo
+```text
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-
+```
 # 3. Cài đặt thư viện & Tạo bảng
+```text
 pip install -r requirements.txt
 flask db upgrade
-
+```
 # 4. Nạp dữ liệu mẫu & Chạy Server
-
+```text
 python seed_data.py
 python run.py
-
+```
 API sẽ chạy tại: http://127.0.0.1:5000/api
 
 Bước 2: Chạy Frontend (Mobile App)
 Mở một cửa sổ PowerShell mới:
-
+```text
 cd mobile
 flutter pub get
-
+```
 
 ⚠️ BƯỚC QUAN TRỌNG: Mở file mobile/lib/configs.dart và sửa baseUrl khớp với thiết bị bạn đang test:
 
@@ -112,8 +118,9 @@ Thiết bị thật (Wi-Fi/LAN): http://<IPv4_Của_Máy_Tính>:5000/api
 
 
 # Chạy ứng dụng
+```text
 flutter run
-
+```
 
 📚 Tài liệu API (API Documentation)
 Toàn bộ các Endpoint gọi từ Mobile lên Server đều tuân thủ chuẩn RESTful API.
