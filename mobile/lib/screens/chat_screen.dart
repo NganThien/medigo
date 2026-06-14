@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/chat_data.dart';
+import 'dart:async';
 
 // ==========================================
 // HÀM GỌI POPUP TƯ VẤN (Gọi từ nút trái tim)
@@ -108,6 +109,18 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final ChatData _chatData = ChatData(); // Lấy kho dữ liệu chung
 
+  final FocusNode _focusNode = FocusNode();
+  Timer? _replyTimer;
+
+  @override
+  void dispose() {
+    _replyTimer?.cancel();
+    _focusNode.dispose(); 
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   void _sendMessage() {
     if (_controller.text.trim().isEmpty) return;
 
@@ -117,23 +130,50 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     });
     
+    _chatData.saveMessages();
+
     _controller.clear();
     _scrollToBottom();
+    _focusNode.requestFocus();
+    bool alreadyReplied = _chatData.messages.any((msg) => msg.text == "Dạ mình quan tâm sản phẩm nào ạ?");
+    if (alreadyReplied) return; // Nếu trong chat đã có câu này rồi thì thoát luôn, không đếm 5 giây nữa!
 
-    // Giả lập Dược sĩ trả lời sau 1.5 giây
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
+    _replyTimer?.cancel();
+
+    // Đặt lại đồng hồ 5 giây. Nếu trong 5 giây mà khách không nhắn nữa thì bot mới nói.
+    _replyTimer = Timer(const Duration(seconds: 5), () {
+      if (!mounted) return;
+
+      // 🟢 BƯỚC 1: Bắn ra tin nhắn chào hỏi trước
+      setState(() {
+        _chatData.messages.add(
+          ChatMessage(
+            text: "Cảm ơn Quý khách đã liên hệ nhà thuốc Medigo!", 
+            isUser: false, 
+            time: DateTime.now()
+          ),
+        );
+      });
+      _chatData.saveMessages();
+      _scrollToBottom();
+
+      // 🟢 BƯỚC 2: Giả vờ nghỉ 1 giây (giống người thật đang gõ) rồi bắn tin nhắn thứ 2
+      Future.delayed(const Duration(seconds: 1), () {
+        if (!mounted) return;
+        
         setState(() {
           _chatData.messages.add(
             ChatMessage(
-              text: "Dược sĩ MediGo đã nhận được câu hỏi. Xin đợi một lát để chúng tôi kiểm tra thông tin thuốc nhé!", 
+              text: "Dạ mình quan tâm sản phẩm nào ạ?", 
               isUser: false, 
               time: DateTime.now()
             ),
           );
         });
+        _chatData.saveMessages();
         _scrollToBottom();
-      }
+      });
+      
     });
   }
 
@@ -214,6 +254,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    focusNode: _focusNode,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (value) {
                       _sendMessage(); 

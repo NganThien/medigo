@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:medigo/models/chat_data.dart';
 import 'screens/main_screen.dart';
 import 'screens/login_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ChatData().loadMessages();
+  
   runApp(const MyApp());
 }
 
