@@ -1,0 +1,152 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Quản lý danh mục - MediGo Admin{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Quản lý danh mục</h2>
+
+<!-- Add Category Button -->
+<div class="card mb-4">
+    <div class="card-body">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+            <i class="fas fa-plus me-2"></i>Thêm danh mục mới
+        </button>
+    </div>
+</div>
+
+<!-- Categories Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Ảnh</th>
+                        <th>Tên danh mục</th>
+                        <th>Số sản phẩm</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr>
+                        <td>
+                            {% if category.image_url %}
+                            <img src="{{ url_for('static', filename=category.image_url) }}" class="product-thumbnail" alt="{{ category.name }}">
+                            {% else %}
+                            <span class="text-muted"><i class="fas fa-image fa-2x"></i></span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ category.name }}</strong></td>
+                        <td>
+                            <span class="badge bg-info">{{ category.products|length }} sản phẩm</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#editCategoryModal{{ category.id }}" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal{{ category.id }}" title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">Chưa có danh mục nào</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Thêm danh mục mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.add_category') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add_name" class="form-label">Tên danh mục *</label>
+                        <input type="text" class="form-control" id="add_name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_image_url" class="form-label">URL ảnh</label>
+                        <input type="text" class="form-control" id="add_image_url" name="image_url" placeholder="uploads/categories/image.jpg">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i>Thêm danh mục
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Category Modals -->
+{% for category in categories %}
+<div class="modal fade" id="editCategoryModal{{ category.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Sửa danh mục: {{ category.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.edit_category', category_id=category.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name_{{ category.id }}" class="form-label">Tên danh mục *</label>
+                        <input type="text" class="form-control" id="edit_name_{{ category.id }}" name="name" value="{{ category.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_image_url_{{ category.id }}" class="form-label">URL ảnh</label>
+                        <input type="text" class="form-control" id="edit_image_url_{{ category.id }}" name="image_url" value="{{ category.image_url or '' }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Cập nhật
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Category Modals -->
+<div class="modal fade" id="deleteCategoryModal{{ category.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-trash me-2"></i>Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa danh mục <strong>{{ category.name }}</strong>?</p>
+                {% if category.products|length > 0 %}
+                <p class="text-warning">Cảnh báo: Danh mục này có {{ category.products|length }} sản phẩm. Xóa danh mục có thể ảnh hưởng đến sản phẩm liên quan.</p>
+                {% endif %}
+                <p class="text-danger">Hành động này không thể hoàn tác!</p>
+            </div>
+            <form method="POST" action="{{ url_for('admin.delete_category', category_id=category.id) }}">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Xóa danh mục
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

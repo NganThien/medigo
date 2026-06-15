@@ -29,6 +29,7 @@ def create_app():
     
     app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{db_user}:{db_pass}@{db_host}/{db_name}'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = 'medigo_admin_secret_key_2026_secure_session'
 
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)
 
@@ -44,9 +45,9 @@ def create_app():
     from .routes import main
     app.register_blueprint(main)
 
-    # Flask-Admin: Trang quản trị
-    from .admin import init_admin
-    init_admin(app)
+    # Custom Admin Panel
+    from .admin_blueprint import admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/admin')
 
     # Tự động tạo bảng nếu chưa có (Lệnh này chạy mỗi khi bật server)
     # with app.app_context():

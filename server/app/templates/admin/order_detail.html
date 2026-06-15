@@ -1,0 +1,146 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Chi tiết đơn hàng #{{ order.id }} - MediGo Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Chi tiết đơn hàng #{{ order.id }}</h2>
+    <a href="{{ url_for('admin.orders') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Quay lại
+    </a>
+</div>
+
+<!-- Order Info Card -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-user me-2"></i>Thông tin khách hàng
+            </div>
+            <div class="card-body">
+                {% if order.user %}
+                <div class="mb-2">
+                    <strong>Họ tên:</strong> {{ order.user.full_name }}
+                </div>
+                <div class="mb-2">
+                    <strong>Số điện thoại:</strong> {{ order.user.phone }}
+                </div>
+                <div class="mb-2">
+                    <strong>Địa chỉ:</strong> {{ order.user.address or 'Chưa cập nhật' }}
+                </div>
+                {% else %}
+                <p class="text-muted">Khách ẩn danh</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>Thông tin đơn hàng
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <strong>Ngày đặt:</strong> {{ order.created_at.strftime('%d/%m/%Y %H:%M:%S') }}
+                </div>
+                <div class="mb-2">
+                    <strong>Địa chỉ giao:</strong> {{ order.shipping_address }}
+                </div>
+                <div class="mb-2">
+                    <strong>Tổng tiền:</strong> 
+                    <span class="text-success" style="font-size: 18px;">{{ "{:,.0f}".format(order.total_amount).replace(',', '.') }} đ</span>
+                </div>
+                <div class="mb-2">
+                    <strong>Trạng thái:</strong>
+                    {% if order.status == 'pending' %}
+                        <span class="badge badge-pending">Chờ xử lý</span>
+                    {% elif order.status == 'shipping' %}
+                        <span class="badge badge-shipping">Đang giao</span>
+                    {% elif order.status == 'completed' %}
+                        <span class="badge badge-completed">Hoàn thành</span>
+                    {% elif order.status == 'cancelled' %}
+                        <span class="badge badge-cancelled">Đã hủy</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Status Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-edit me-2"></i>Cập nhật trạng thái
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+            <div class="row align-items-end">
+                <div class="col-md-6">
+                    <label for="status" class="form-label">Trạng thái mới</label>
+                    <select class="form-select" id="status" name="status" required>
+                        <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Chờ xử lý</option>
+                        <option value="shipping" {% if order.status == 'shipping' %}selected{% endif %}>Đang giao</option>
+                        <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Hoàn thành</option>
+                        <order value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Đã hủy</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-save me-2"></i>Cập nhật trạng thái
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Order Items -->
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-list me-2"></i>Chi tiết sản phẩm
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Đơn giá</th>
+                        <th>Số lượng</th>
+                        <th>Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detail in order.details %}
+                    <tr>
+                        <td>
+                            {% if detail.product %}
+                                <strong>{{ detail.product.name }}</strong>
+                                {% if detail.product.image_url %}
+                                <br>
+                                <img src="{{ url_for('static', filename=detail.product.image_url) }}" class="product-thumbnail mt-2" alt="{{ detail.product.name }}">
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Sản phẩm đã xóa</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ "{:,.0f}".format(detail.price_at_purchase).replace(',', '.') }} đ</td>
+                        <td><strong>x{{ detail.quantity }}</strong></td>
+                        <td><strong>{{ "{:,.0f}".format(detail.price_at_purchase * detail.quantity).replace(',', '.') }} đ</strong></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">Không có sản phẩm nào</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="table-light">
+                        <td colspan="3" class="text-end"><strong>Tổng cộng:</strong></td>
+                        <td><strong class="text-success">{{ "{:,.0f}".format(order.total_amount).replace(',', '.') }} đ</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

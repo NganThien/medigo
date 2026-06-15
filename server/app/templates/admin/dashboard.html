@@ -1,0 +1,231 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard - MediGo Admin{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Dashboard</h2>
+
+<!-- Summary Cards -->
+<div class="row">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card primary">
+            <div class="stat-info">
+                <h3>{{ total_orders }}</h3>
+                <p>Tổng đơn hàng</p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card success">
+            <div class="stat-info">
+                <h3>{{ "{:,.0f}".format(total_revenue).replace(',', '.') }} đ</h3>
+                <p>Tổng doanh thu</p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card info">
+            <div class="stat-info">
+                <h3>{{ total_products }}</h3>
+                <p>Tổng sản phẩm</p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-box"></i>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card warning">
+            <div class="stat-info">
+                <h3>{{ total_categories }}</h3>
+                <p>Tổng danh mục</p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-folder"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Chart -->
+<div class="row mb-4">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-line me-2"></i>Biểu đồ doanh thu 6 tháng gần nhất
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle me-2"></i>Thông tin hệ thống
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Phiên bản:</strong> MediGo Admin v1.0
+                </div>
+                <div class="mb-3">
+                    <strong>Database:</strong> MySQL
+                </div>
+                <div class="mb-3">
+                    <strong>Framework:</strong> Flask + Bootstrap 5
+                </div>
+                <div>
+                    <strong>Trạng thái:</strong>
+                    <span class="badge badge-completed">Hoạt động</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Orders -->
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-clock me-2"></i>Đơn hàng gần đây
+                </div>
+                <a href="{{ url_for('admin.orders') }}" class="btn btn-primary btn-sm">
+                    Xem tất cả <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Mã Đơn</th>
+                                <th>Khách hàng</th>
+                                <th>Tổng tiền</th>
+                                <th>Trạng thái</th>
+                                <th>Ngày đặt</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td><strong>#{{ order.id }}</strong></td>
+                                <td>
+                                    {% if order.user %}
+                                        {{ order.user.full_name }}<br>
+                                        <small class="text-muted">{{ order.user.phone }}</small>
+                                    {% else %}
+                                        <span class="text-muted">Khách ẩn danh</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong>{{ "{:,.0f}".format(order.total_amount).replace(',', '.') }} đ</strong></td>
+                                <td>
+                                    {% if order.status == 'pending' %}
+                                        <span class="badge badge-pending">Chờ xử lý</span>
+                                    {% elif order.status == 'shipping' %}
+                                        <span class="badge badge-shipping">Đang giao</span>
+                                    {% elif order.status == 'completed' %}
+                                        <span class="badge badge-completed">Hoàn thành</span>
+                                    {% elif order.status == 'cancelled' %}
+                                        <span class="badge badge-cancelled">Đã hủy</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ order.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>
+                                    <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">Chưa có đơn hàng nào</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Revenue Chart
+const ctx = document.getElementById('revenueChart').getContext('2d');
+const revenueChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [{% for item in revenue_data %}'{{ item.month }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Doanh thu (VNĐ)',
+            data: [{% for item in revenue_data %}{{ item.revenue }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: 'rgba(78, 115, 223, 0.1)',
+            borderColor: 'rgba(78, 115, 223, 1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                padding: 12,
+                displayColors: false,
+                callbacks: {
+                    label: function(context) {
+                        let value = context.parsed.y;
+                        return 'Doanh thu: ' + value.toLocaleString('vi-VN') + ' đ';
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                    callback: function(value) {
+                        return (value / 1000000).toFixed(0) + 'M';
+                    }
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

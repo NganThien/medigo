@@ -1,0 +1,270 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Quản lý sản phẩm - MediGo Admin{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Quản lý sản phẩm</h2>
+
+<!-- Search and Add Button -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <form method="GET" action="{{ url_for('admin.products') }}">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" name="search" placeholder="Tìm kiếm sản phẩm..." value="{{ search }}">
+                        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+                        {% if search %}
+                        <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">Xóa</a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                    <i class="fas fa-plus me-2"></i>Thêm sản phẩm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Products Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Ảnh</th>
+                        <th>Tên sản phẩm</th>
+                        <th>Danh mục</th>
+                        <th>Giá</th>
+                        <th>Đơn vị</th>
+                        <th>Mô tả</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products.items %}
+                    <tr>
+                        <td>
+                            {% if product.image_url %}
+                            <img src="{{ url_for('static', filename=product.image_url) }}" class="product-thumbnail" alt="{{ product.name }}">
+                            {% else %}
+                            <span class="text-muted"><i class="fas fa-image fa-2x"></i></span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ product.name }}</strong></td>
+                        <td>
+                            {% if product.category %}
+                                <span class="badge bg-secondary">{{ product.category.name }}</span>
+                            {% else %}
+                                <span class="text-muted">Chưa phân loại</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ "{:,.0f}".format(product.price).replace(',', '.') }} đ</strong></td>
+                        <td>{{ product.unit }}</td>
+                        <td>
+                            <small>{{ product.description[:50] }}{% if product.description and product.description|length > 50 %}...{% endif %}</small>
+                        </td>
+                        <td>
+                            <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#editProductModal{{ product.id }}" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteProductModal{{ product.id }}" title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">Không tìm thấy sản phẩm nào</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if products.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if products.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.products', page=products.prev_num, search=search) }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in products.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        {% if page_num == products.page %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin.products', page=page_num, search=search) }}">{{ page_num }}</a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if products.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin.products', page=products.next_num, search=search) }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Thêm sản phẩm mới</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.add_product') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add_name" class="form-label">Tên sản phẩm *</label>
+                            <input type="text" class="form-control" id="add_name" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add_price" class="form-label">Giá (VNĐ) *</label>
+                            <input type="number" class="form-control" id="add_price" name="price" required min="0" step="1000">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="add_category" class="form-label">Danh mục</label>
+                            <select class="form-select" id="add_category" name="category_id">
+                                <option value="">-- Chọn danh mục --</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="add_unit" class="form-label">Đơn vị</label>
+                            <input type="text" class="form-control" id="add_unit" name="unit" value="Hộp">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_image_url" class="form-label">URL ảnh</label>
+                        <input type="text" class="form-control" id="add_image_url" name="image_url" placeholder="uploads/products/image.jpg">
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_description" class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="add_description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i>Thêm sản phẩm
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Product Modals -->
+{% for product in products.items %}
+<div class="modal fade" id="editProductModal{{ product.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Sửa sản phẩm: {{ product.name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.edit_product', product_id=product.id) }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_name_{{ product.id }}" class="form-label">Tên sản phẩm *</label>
+                            <input type="text" class="form-control" id="edit_name_{{ product.id }}" name="name" value="{{ product.name }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_price_{{ product.id }}" class="form-label">Giá (VNĐ) *</label>
+                            <input type="number" class="form-control" id="edit_price_{{ product.id }}" name="price" value="{{ product.price }}" required min="0" step="1000">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_category_{{ product.id }}" class="form-label">Danh mục</label>
+                            <select class="form-select" id="edit_category_{{ product.id }}" name="category_id">
+                                <option value="">-- Chọn danh mục --</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" {% if product.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_unit_{{ product.id }}" class="form-label">Đơn vị</label>
+                            <input type="text" class="form-control" id="edit_unit_{{ product.id }}" name="unit" value="{{ product.unit }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_image_url_{{ product.id }}" class="form-label">URL ảnh</label>
+                        <input type="text" class="form-control" id="edit_image_url_{{ product.id }}" name="image_url" value="{{ product.image_url or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_description_{{ product.id }}" class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="edit_description_{{ product.id }}" name="description" rows="3">{{ product.description or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Cập nhật
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Product Modals -->
+<div class="modal fade" id="deleteProductModal{{ product.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-trash me-2"></i>Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa sản phẩm <strong>{{ product.name }}</strong>?</p>
+                <p class="text-danger">Hành động này không thể hoàn tác!</p>
+            </div>
+            <form method="POST" action="{{ url_for('admin.delete_product', product_id=product.id) }}">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Xóa sản phẩm
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
