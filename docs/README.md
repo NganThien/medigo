@@ -12,8 +12,6 @@
 
 ## 📸 Giao diện Ứng dụng (Screenshots)
 
-> **Lưu ý cho tác giả:** Hãy thay thế link ảnh dưới đây bằng ảnh chụp màn hình thật từ điện thoại của bạn để GitHub trông chuyên nghiệp hơn.
-
 <div align="center">
   <img src="https://raw.githubusercontent.com/NganThien/Hieu_thuoc_online/main/docs/images/home_screen.png" width="30%" height="auto" alt="Trang chủ"/> &nbsp;
   <img src="https://raw.githubusercontent.com/NganThien/Hieu_thuoc_online/main/docs/images/danh_muc.png" width="30%" height="auto" alt="Danh mục"/> &nbsp;
@@ -32,8 +30,8 @@
 
 Trang quản trị (Dashboard) được tích hợp trực tiếp vào Backend, cho phép chủ nhà thuốc vận hành hệ thống một cách trực quan mà không cần thao tác với Database.
 
-* 🌐 **Đường dẫn truy cập:** `http://localhost:5000/admin` (Hoặc theo IP Server của bạn)
-* 🔐 **Tài khoản Demo:** `0900000000` | **Mật khẩu:** `123456`
+* 🌐 **Đường dẫn truy cập:** `http://localhost:5000/admin/login` (Hoặc theo IP Server của bạn)
+* 🔐 **Tài khoản Demo:** `0383763581` | **Mật khẩu:** `123456`
 
 **Các tính năng trên Web Admin:**
 - **Quản trị Sản phẩm:** Thêm/Sửa/Xóa thuốc, hình ảnh, giá cả và phân loại danh mục.
