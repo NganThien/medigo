@@ -55,13 +55,15 @@ class User(db.Model):
 class Order(db.Model):
     __tablename__ = 'orders'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     total_amount = db.Column(db.Numeric(10, 2), default=0)
     status = db.Column(db.Enum('pending', 'shipping', 'completed', 'cancelled'), default='pending')
     shipping_address = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     # Quan hệ: Một đơn hàng có nhiều chi tiết
     details = db.relationship('OrderDetail', backref='order', lazy=True)
+    # Quan hệ: Một đơn hàng thuộc về một người dùng
+    user = db.relationship('User', backref='orders', lazy=True)
 
 # 5. Bảng CHI TIẾT ĐƠN HÀNG
 class OrderDetail(db.Model):

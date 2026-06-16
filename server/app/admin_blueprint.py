@@ -7,7 +7,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from functools import wraps
 from . import db
 from .models import User, Product, Category, Order, OrderDetail
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import func, desc
 import os
 
@@ -128,6 +128,43 @@ def update_order_status(order_id):
     
     return redirect(url_for('admin.order_detail', order_id=order_id))
 
+@admin_bp.route('/orders/<int:order_id>/edit', methods=['POST'])
+@admin_required
+def edit_order(order_id):
+    """Edit order status and shipping address"""
+    order = Order.query.get_or_404(order_id)
+    
+    new_status = request.form.get('status')
+    shipping_address = request.form.get('shipping_address')
+    
+    if new_status in ['pending', 'shipping', 'completed', 'cancelled']:
+        order.status = new_status
+    
+    if shipping_address:
+        order.shipping_address = shipping_address
+    
+    db.session.commit()
+    flash('Đã cập nhật đơn hàng thành công!', 'success')
+    
+    return redirect(url_for('admin.orders'))
+
+@admin_bp.route('/orders/<int:order_id>/delete', methods=['POST'])
+@admin_required
+def delete_order(order_id):
+    """Delete order"""
+    order = Order.query.get_or_404(order_id)
+    
+    # Delete order details first
+    for detail in order.details:
+        db.session.delete(detail)
+    
+    # Delete order
+    db.session.delete(order)
+    db.session.commit()
+    flash('Đã xóa đơn hàng thành công!', 'success')
+    
+    return redirect(url_for('admin.orders'))
+
 # ==========================================
 # PRODUCT MANAGEMENT ROUTES
 # ==========================================
@@ -208,6 +245,110 @@ def delete_product(product_id):
     return redirect(url_for('admin.products'))
 
 # ==========================================
+# USER MANAGEMENT ROUTES
+# ==========================================
+@admin_bp.route('/users')
+@admin_required
+def users():
+    """List all users with search and pagination"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    search = request.args.get('search', '')
+    
+    query = User.query
+    if search:
+        query = query.filter(
+            (User.phone.ilike(f'%{search}%')) |
+            (User.full_name.ilike(f'%{search}%'))
+        )
+    
+    users = query.order_by(User.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('admin/users.html', users=users, search=search)
+
+@admin_bp.route('/users/add', methods=['POST'])
+@admin_required
+def add_user():
+    """Add new user"""
+    phone = request.form.get('phone')
+    password = request.form.get('password')
+    full_name = request.form.get('full_name')
+    role = request.form.get('role', 'user')
+    address = request.form.get('address')
+    
+    # Check if phone already exists
+    existing_user = User.query.filter_by(phone=phone).first()
+    if existing_user:
+        flash('Số điện thoại đã tồn tại!', 'danger')
+        return redirect(url_for('admin.users'))
+    
+    if phone and password and full_name:
+        user = User(
+            phone=phone,
+            password=generate_password_hash(password),
+            full_name=full_name,
+            role=role,
+            address=address
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash('Đã thêm khách hàng thành công!', 'success')
+    else:
+        flash('Vui lòng nhập số điện thoại, mật khẩu và họ tên.', 'danger')
+    
+    return redirect(url_for('admin.users'))
+
+@admin_bp.route('/users/<int:user_id>/edit', methods=['POST'])
+@admin_required
+def edit_user(user_id):
+    """Edit user"""
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent editing own role if current admin
+    if user.id == session.get('admin_id'):
+        flash('Bạn không thể chỉnh sửa thông tin của chính mình.', 'warning')
+        return redirect(url_for('admin.users'))
+    
+    user.phone = request.form.get('phone')
+    user.full_name = request.form.get('full_name')
+    user.role = request.form.get('role')
+    user.address = request.form.get('address')
+    
+    # Update password only if provided
+    password = request.form.get('password')
+    if password:
+        user.password = generate_password_hash(password)
+    
+    db.session.commit()
+    flash('Đã cập nhật khách hàng thành công!', 'success')
+    
+    return redirect(url_for('admin.users'))
+
+@admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
+@admin_required
+def delete_user(user_id):
+    """Delete user"""
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent deleting own account
+    if user.id == session.get('admin_id'):
+        flash('Bạn không thể xóa tài khoản của chính mình.', 'danger')
+        return redirect(url_for('admin.users'))
+    
+    # Prevent deleting admin users
+    if user.role == 'admin':
+        flash('Không thể xóa tài khoản admin.', 'danger')
+        return redirect(url_for('admin.users'))
+    
+    db.session.delete(user)
+    db.session.commit()
+    flash('Đã xóa khách hàng thành công!', 'success')
+    
+    return redirect(url_for('admin.users'))
+
+# ==========================================
 # CATEGORY MANAGEMENT ROUTES
 # ==========================================
 @admin_bp.route('/categories')
@@ -256,3 +397,33 @@ def delete_category(category_id):
     flash('Đã xóa danh mục thành công!', 'success')
     
     return redirect(url_for('admin.categories'))
+
+import os
+from flask import send_from_directory, abort
+
+@admin_bp.route('/serve_media/<path:filename>')
+def serve_media(filename):
+    # Cắt dấu gạch chéo ở đầu nếu có
+    filename = filename.lstrip('/')
+    
+    # Định vị thư mục mobile
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    mobile_dir = os.path.abspath(os.path.join(current_dir, '../../mobile'))
+    
+    # Ghép thành đường dẫn hoàn chỉnh
+    file_path = os.path.join(mobile_dir, filename)
+    
+    # === ĐOẠN NÀY LÀ MÁY NGHE LÉN SẼ IN RA TERMINAL ===
+    print("\n" + "="*30)
+    print(f"🔍 DEBUG ẢNH:")
+    print(f"👉 Tên file DB gửi lên: {filename}")
+    print(f"👉 Thư mục Mobile: {mobile_dir}")
+    print(f"👉 Đường dẫn Flask đang tìm: {file_path}")
+    print(f"👉 File CÓ TỒN TẠI KHÔNG?: {os.path.exists(file_path)}")
+    print("="*30 + "\n")
+    # ===================================================
+    
+    if not os.path.exists(file_path):
+        abort(404) # Trả về lỗi 404 nếu không thấy file
+        
+    return send_from_directory(mobile_dir, filename)

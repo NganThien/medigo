@@ -15,10 +15,15 @@
 > **Lưu ý cho tác giả:** Hãy thay thế link ảnh dưới đây bằng ảnh chụp màn hình thật từ điện thoại của bạn để GitHub trông chuyên nghiệp hơn.
 
 <div align="center">
-  <img src="https://via.placeholder.com/200x400.png?text=Home+Screen" width="200"/> 
-  <img src="https://via.placeholder.com/200x400.png?text=Cart+Screen" width="200"/>
-  <img src="https://via.placeholder.com/200x400.png?text=Checkout" width="200"/>
-  <img src="https://via.placeholder.com/200x400.png?text=Order+History" width="200"/>
+  <img src="docs/images/home_screen.png" width="30%" alt="Trang chủ"/> &nbsp;
+  <img src="docs/images/danh_muc.png" width="30%" alt="Danh mục"/> &nbsp;
+  <img src="docs/images/tu_van.png" width="30%" alt="Tư vấn Dược sĩ"/>
+
+  <br><br>
+
+  <img src="docs/images/tin_nhan.png" width="30%" alt="Tin nhắn"/> &nbsp;
+  <img src="docs/images/gio_hang.png" width="30%" alt="Giỏ hàng"/> &nbsp;
+  <img src="docs/images/tai_khoan.png" width="30%" alt="Tài khoản"/>
 </div>
 
 ---

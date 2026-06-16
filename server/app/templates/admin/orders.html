@@ -26,10 +26,13 @@
                         <td><strong>#{{ order.id }}</strong></td>
                         <td>
                             {% if order.user %}
-                                {{ order.user.full_name }}<br>
+                                <strong class="text-primary">{{ order.user.name }}</strong>
+                                <br>
                                 <small class="text-muted">{{ order.user.phone }}</small>
                             {% else %}
-                                <span class="text-muted">Khách ẩn danh</span>
+                                <span class="badge bg-secondary"><i class="fas fa-user-secret"></i> Khách ẩn danh</span>
+                                <br>
+                                <small class="text-muted fst-italic">Tài khoản đã xóa</small>
                             {% endif %}
                         </td>
                         <td>
@@ -52,6 +55,12 @@
                             <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn btn-info btn-sm" title="Xem chi tiết">
                                 <i class="fas fa-eye"></i>
                             </a>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editOrderModal{{ order.id }}" title="Sửa">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteOrderModal{{ order.id }}" title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                     {% else %}
@@ -105,4 +114,65 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Edit Order Modals -->
+{% for order in orders.items %}
+<div class="modal fade" id="editOrderModal{{ order.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Sửa đơn hàng #{{ order.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin.edit_order', order_id=order.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_status_{{ order.id }}" class="form-label">Trạng thái</label>
+                        <select class="form-select" id="edit_status_{{ order.id }}" name="status">
+                            <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Chờ xử lý</option>
+                            <option value="shipping" {% if order.status == 'shipping' %}selected{% endif %}>Đang giao</option>
+                            <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Hoàn thành</option>
+                            <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Đã hủy</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_shipping_address_{{ order.id }}" class="form-label">Địa chỉ giao hàng</label>
+                        <textarea class="form-control" id="edit_shipping_address_{{ order.id }}" name="shipping_address" rows="3">{{ order.shipping_address or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Cập nhật
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Order Modals -->
+<div class="modal fade" id="deleteOrderModal{{ order.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-trash me-2"></i>Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa đơn hàng <strong>#{{ order.id }}</strong>?</p>
+                <p class="text-danger">Hành động này không thể hoàn tác!</p>
+            </div>
+            <form method="POST" action="{{ url_for('admin.delete_order', order_id=order.id) }}">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Xóa đơn hàng
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

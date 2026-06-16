@@ -411,6 +411,10 @@
                 <i class="fas fa-folder"></i>
                 <span>Danh mục</span>
             </a>
+            <a href="{{ url_for('admin.users') }}" class="nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}">
+                <i class="fas fa-users"></i>
+                <span>Khách hàng</span>
+            </a>
         </div>
     </nav>
     {% endif %}
