@@ -15,15 +15,15 @@
 > **Lưu ý cho tác giả:** Hãy thay thế link ảnh dưới đây bằng ảnh chụp màn hình thật từ điện thoại của bạn để GitHub trông chuyên nghiệp hơn.
 
 <div align="center">
-  <img src="docs/images/home_screen.png" width="30%" alt="Trang chủ"/> &nbsp;
-  <img src="docs/images/danh_muc.png" width="30%" alt="Danh mục"/> &nbsp;
-  <img src="docs/images/tu_van.png" width="30%" alt="Tư vấn Dược sĩ"/>
+  <img src="https://raw.githubusercontent.com/NganThien/Hieu_thuoc_online/main/docs/images/home_screen.png" width="30%" height="auto" alt="Trang chủ"/> &nbsp;
+  <img src="https://raw.githubusercontent.com/NganThien/Hieu_thuoc_online/main/docs/images/danh_muc.png" width="30%" height="auto" alt="Danh mục"/> &nbsp;
+  <img src="https://raw.githubusercontent.com/NganThien/Hieu_thuoc_online/main/docs/images/tu_van.png" width="30%" height="auto" alt="Tư vấn Dược sĩ"/>
 
   <br><br>
 
-  <img src="docs/images/tin_nhan.png" width="30%" alt="Tin nhắn"/> &nbsp;
-  <img src="docs/images/gio_hang.png" width="30%" alt="Giỏ hàng"/> &nbsp;
-  <img src="docs/images/tai_khoan.png" width="30%" alt="Tài khoản"/>
+  <img src="https://raw.githubusercontent.com/NganThien/Hieu_thuoc_online/main/docs/images/tin_nhan.png" width="30%" height="auto" alt="Tin nhắn"/> &nbsp;
+  <img src="https://raw.githubusercontent.com/NganThien/Hieu_thuoc_online/main/docs/images/gio_hang.png" width="30%" height="auto" alt="Giỏ hàng"/> &nbsp;
+  <img src="https://raw.githubusercontent.com/NganThien/Hieu_thuoc_online/main/docs/images/tai_khoan.png" width="30%" height="auto" alt="Tài khoản"/>
 </div>
 
 ---
